@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Supplier procurement and evaluation audit API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: suppliers
+    description: Supplier directory
+  - name: criteria
+    description: Evaluation criteria
+  - name: evaluations
+    description: Supplier evaluation runs and on-chain audit records
+  - name: dashboard
+    description: Procurement overview and activity
 paths:
   /healthz:
     get:
@@ -24,7 +32,220 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get procurement overview
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /activity:
+    get:
+      operationId: getActivity
+      tags: [dashboard]
+      summary: Get recent workspace activity
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Recent activity entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+  /suppliers:
+    get:
+      operationId: getSuppliers
+      tags: [suppliers]
+      summary: List suppliers
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Register a supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInput"
+      responses:
+        "201":
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "400":
+          description: Invalid supplier data
+  /suppliers/{id}:
+    patch:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update a supplier
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierUpdate"
+      responses:
+        "200":
+          description: Supplier updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "404":
+          description: Supplier not found
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      summary: Delete a supplier
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Supplier deleted
+        "404":
+          description: Supplier not found
+  /criteria:
+    get:
+      operationId: getCriteria
+      tags: [criteria]
+      summary: Get the current evaluation rubric
+      responses:
+        "200":
+          description: Evaluation criteria
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaSet"
+    put:
+      operationId: updateCriteria
+      tags: [criteria]
+      summary: Replace the evaluation rubric
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriteriaSetInput"
+      responses:
+        "200":
+          description: Updated evaluation criteria
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaSet"
+        "400":
+          description: Invalid criteria or weights do not total 100
+  /evaluations:
+    get:
+      operationId: getEvaluations
+      tags: [evaluations]
+      summary: List saved evaluation reports
+      responses:
+        "200":
+          description: Evaluation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EvaluationSummary"
+    post:
+      operationId: createEvaluation
+      tags: [evaluations]
+      summary: Run and save a supplier evaluation
+      responses:
+        "201":
+          description: Evaluation report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "400":
+          description: Suppliers or valid criteria are required
+  /evaluations/{id}:
+    get:
+      operationId: getEvaluation
+      tags: [evaluations]
+      summary: Get a saved evaluation report
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Evaluation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "404":
+          description: Evaluation not found
+  /evaluations/{id}/anchor:
+    patch:
+      operationId: saveEvaluationAnchor
+      tags: [evaluations]
+      summary: Save wallet transaction details after anchoring an evaluation
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluationAnchorInput"
+      responses:
+        "200":
+          description: On-chain audit reference saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "400":
+          description: Invalid anchor details
+        "404":
+          description: Evaluation not found
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +254,283 @@ components:
           type: string
       required:
         - status
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        certifications:
+          type: array
+          items:
+            type: string
+        price:
+          type: integer
+        quality:
+          type: integer
+        delivery:
+          type: integer
+        reliability:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, code, name, location, certifications, price, quality, delivery, reliability, createdAt, updatedAt]
+    SupplierInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        location:
+          type: string
+          minLength: 1
+          maxLength: 160
+        certifications:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 20
+        price:
+          type: integer
+          minimum: 1
+          maximum: 10
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 10
+        delivery:
+          type: integer
+          minimum: 1
+          maximum: 10
+        reliability:
+          type: integer
+          minimum: 1
+          maximum: 10
+      required: [name, location, certifications, price, quality, delivery, reliability]
+    SupplierUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        location:
+          type: string
+          minLength: 1
+          maxLength: 160
+        certifications:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 20
+        price:
+          type: integer
+          minimum: 1
+          maximum: 10
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 10
+        delivery:
+          type: integer
+          minimum: 1
+          maximum: 10
+        reliability:
+          type: integer
+          minimum: 1
+          maximum: 10
+      minProperties: 1
+    CriteriaRule:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [price, quality, delivery, reliability]
+        label:
+          type: string
+        enabled:
+          type: boolean
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+        cutoff:
+          type: integer
+          minimum: 0
+          maximum: 10
+        hint:
+          type: string
+      required: [key, label, enabled, weight, cutoff, hint]
+    CriteriaSet:
+      type: object
+      properties:
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriteriaRule"
+        version:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required: [criteria, version, updatedAt]
+    CriteriaSetInput:
+      type: object
+      properties:
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriteriaRule"
+          minItems: 1
+          maxItems: 4
+      required: [criteria]
+    SupplierScore:
+      allOf:
+        - $ref: "#/components/schemas/Supplier"
+        - type: object
+          properties:
+            score:
+              type: number
+            qualified:
+              type: boolean
+            failedCriteria:
+              type: array
+              items:
+                type: string
+          required: [score, qualified, failedCriteria]
+    EvaluationAnchor:
+      type: object
+      properties:
+        reportHash:
+          type: string
+        verificationSalt:
+          type: string
+        transactionHash:
+          type: string
+        contractAddress:
+          type: string
+        evaluatorAddress:
+          type: string
+        chainId:
+          type: integer
+        blockNumber:
+          type: integer
+        anchoredAt:
+          type: string
+          format: date-time
+      required: [reportHash, verificationSalt, transactionHash, contractAddress, evaluatorAddress, chainId, blockNumber, anchoredAt]
+    EvaluationAnchorInput:
+      type: object
+      properties:
+        reportHash:
+          type: string
+          pattern: "^0x[0-9a-fA-F]{64}$"
+        verificationSalt:
+          type: string
+          pattern: "^0x[0-9a-fA-F]{64}$"
+        transactionHash:
+          type: string
+          pattern: "^0x[0-9a-fA-F]{64}$"
+        contractAddress:
+          type: string
+          pattern: "^0x[0-9a-fA-F]{40}$"
+        evaluatorAddress:
+          type: string
+          pattern: "^0x[0-9a-fA-F]{40}$"
+        chainId:
+          type: integer
+          minimum: 1
+        blockNumber:
+          type: integer
+          minimum: 0
+      required: [reportHash, verificationSalt, transactionHash, contractAddress, evaluatorAddress, chainId, blockNumber]
+    EvaluationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        winnerName:
+          type: ["string", "null"]
+        winnerScore:
+          type: ["number", "null"]
+        supplierCount:
+          type: integer
+        qualifiedCount:
+          type: integer
+        criteriaCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        anchor:
+          oneOf:
+            - $ref: "#/components/schemas/EvaluationAnchor"
+            - type: "null"
+      required: [id, winnerName, winnerScore, supplierCount, qualifiedCount, criteriaCount, createdAt, anchor]
+    Evaluation:
+      allOf:
+        - $ref: "#/components/schemas/EvaluationSummary"
+        - type: object
+          properties:
+            criteriaSnapshot:
+              type: array
+              items:
+                $ref: "#/components/schemas/CriteriaRule"
+            ranked:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupplierScore"
+            disqualified:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupplierScore"
+          required: [criteriaSnapshot, ranked, disqualified]
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventType:
+          type: string
+          enum: [supplier_created, supplier_updated, supplier_deleted, criteria_updated, evaluation_created, evaluation_anchored]
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        evaluationId:
+          type: ["integer", "null"]
+      required: [id, eventType, message, createdAt, evaluationId]
+    Dashboard:
+      type: object
+      properties:
+        supplierCount:
+          type: integer
+        evaluationCount:
+          type: integer
+        anchoredCount:
+          type: integer
+        averageWinnerScore:
+          type: ["number", "null"]
+        recentEvaluations:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationSummary"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+      required: [supplierCount, evaluationCount, anchoredCount, averageWinnerScore, recentEvaluations, recentActivity]
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SupplierSelect"
+description = "A persistent supplier procurement workspace for managing vendors, configuring weighted evaluations, reviewing transparent rankings, and anchoring evaluation fingerprints to an EVM testnet without publishing supplier details."
+version = "1.0.0"
+id = "artifacts/supplier-select"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24987
+
+[services.development]
+run = "pnpm --filter @workspace/supplier-select run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/supplier-select", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/supplier-select/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24987"
+BASE_PATH = "/"
